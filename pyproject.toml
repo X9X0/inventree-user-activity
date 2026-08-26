@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inventree-user-activity"
+version = "0.1.0"
+description = "InvenTree plugin: comprehensive activity report for a specific user"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["weasyprint"]
+
+[project.entry-points.inventree_plugins]
+UserActivityReportPlugin = "inventree_user_activity.core:UserActivityReportPlugin"
+
+[tool.setuptools.packages.find]
+include = ["inventree_user_activity*"]
+
+[tool.setuptools.package-data]
+inventree_user_activity = ["static/*.js", "templates/inventree_user_activity/*.html"]

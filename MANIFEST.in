@@ -1,0 +1,2 @@
+recursive-include inventree_user_activity/static *.js
+recursive-include inventree_user_activity/templates *.html
