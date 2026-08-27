@@ -58,7 +58,7 @@ class UserActivityReportPlugin(AppMixin, UrlsMixin, UserInterfaceMixin, InvenTre
             'context': {
                 'user_id': target_user.pk,
                 'summary': summarize_user_activity(target_user),
-                'pdf_url': f'{self.base_url}report/{target_user.pk}/pdf/',
+                'pdf_url': f'/{self.base_url.lstrip("/")}report/{target_user.pk}/pdf/',
             },
         }]
 
