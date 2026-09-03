@@ -47,6 +47,18 @@ instead of going through `ReportTemplate`.
    inventree-user-activity
    ```
 
+   To install from git via the admin UI (Settings > Plugins > Install
+   Plugin), the URL **must** carry the `git+` prefix:
+
+   ```
+   git+https://github.com/X9X0/inventree-user-activity.git
+   ```
+
+   Without `git+`, InvenTree classifies the URL as a package index and
+   passes it to pip as `-i/--index-url`, so the install fails with
+   `CalledProcessError` / non-zero exit status 1. Package name is
+   `inventree-user-activity`.
+
 3. Restart the InvenTree server and background worker.
 4. In the admin UI, go to Settings > Plugins and activate
    "User Activity Report".
