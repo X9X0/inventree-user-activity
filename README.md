@@ -59,10 +59,30 @@ instead of going through `ReportTemplate`.
    `CalledProcessError` / non-zero exit status 1. Package name is
    `inventree-user-activity`.
 
-3. Restart the InvenTree server and background worker.
-4. In the admin UI, go to Settings > Plugins and activate
+3. Collect this plugin's static files:
+
+   ```bash
+   python manage.py collectplugins
+   ```
+
+   **Do not use `manage.py collectstatic` for this** — InvenTree's own
+   `InvenTree/ready.py` explicitly excludes `collectstatic` from loading the
+   plugin registry (it's in `canAppAccessDatabase`'s `excluded_commands`
+   list), so a plugin's `static/` directory is never discovered by a plain
+   `collectstatic` run, no matter the storage backend. `collectplugins` is
+   InvenTree's dedicated command for this — it force-loads the plugin
+   registry first, then copies each active plugin's static files into
+   `STATIC_ROOT/plugins/<slug>/`.
+
+   This also means: **any time you run `collectstatic --clear`** (e.g. as
+   part of a frontend/upgrade fix), it wipes the `plugins/` static
+   directory along with everything else — re-run `collectplugins`
+   immediately afterward or this plugin's panel will fail to load with
+   "Static file not found for plugin ...".
+4. Restart the InvenTree server and background worker.
+5. In the admin UI, go to Settings > Plugins and activate
    "User Activity Report".
-5. Visit any user's detail page to see the "Activity Report" panel.
+6. Visit any user's detail page to see the "Activity Report" panel.
 
 ## Development
 
