@@ -12,6 +12,83 @@ def _owner_filter(user):
     return Owner.get_owners_matching_user(user)
 
 
+class _StockHistory:
+    """A user's stock history, as uniform rows from either history backend.
+
+    Behaves enough like a queryset for the report template and the summary
+    (count(), truthiness, iteration), but yields plain dicts with the keys
+    'date', 'item', 'type' and 'notes' whichever model the rows come from.
+    """
+
+    def __init__(self, queryset, to_row):
+        self._queryset = queryset
+        self._to_row = to_row
+
+    def count(self) -> int:
+        return self._queryset.count()
+
+    def __bool__(self) -> bool:
+        return self._queryset.exists()
+
+    def __iter__(self):
+        return (self._to_row(entry) for entry in self._queryset)
+
+
+def _tracking_row(entry) -> dict:
+    """Row for a legacy StockItemTracking entry (InvenTree < 1.7)."""
+    return {
+        'date': entry.date,
+        'item': str(entry.item),
+        'type': str(entry.label()),
+        'notes': entry.notes or '',
+    }
+
+
+def _audit_row(entry) -> dict:
+    """Row for an audit log entry recorded against a stock item (InvenTree >= 1.7)."""
+    return {
+        'date': entry.timestamp,
+        'item': entry.object_repr,
+        # Named stock events ("Stock item created", "Location changed", ...) carry
+        # a label; plain edits and deletions only have the generic action.
+        'type': entry.event_label or str(entry.get_action_display()).capitalize(),
+        'notes': entry.notes or '',
+    }
+
+
+def _stock_history(user) -> _StockHistory:
+    """Return the stock history recorded for a user.
+
+    InvenTree 1.7.0 removed the StockItemTracking model: stock history (including
+    every pre-existing tracking entry, migrated by stock migration 0129) now
+    lives in the global audit log. Older releases only have StockItemTracking.
+    """
+    try:
+        from stock.models import StockItemTracking
+    except ImportError:
+        StockItemTracking = None
+
+    if StockItemTracking is not None:
+        return _StockHistory(
+            StockItemTracking.objects.filter(user=user).order_by('-date'),
+            _tracking_row,
+        )
+
+    from django.contrib.contenttypes.models import ContentType
+
+    from audit.models import AuditLogEntry
+    from stock.models import StockItem
+
+    return _StockHistory(
+        AuditLogEntry.objects.filter(
+            actor=user, content_type=ContentType.objects.get_for_model(StockItem)
+        )
+        .select_related('content_type')
+        .order_by('-timestamp'),
+        _audit_row,
+    )
+
+
 def gather_user_activity(user: User) -> dict:
     """Collect all activity records associated with the given user.
 
@@ -22,14 +99,11 @@ def gather_user_activity(user: User) -> dict:
     from common.models import Attachment, NotesImage
     from order.models import PurchaseOrder, SalesOrder, ReturnOrder
     from part.models import Part
-    from stock.models import StockItemTracking
 
     owners = _owner_filter(user)
 
     return {
-        'stock_tracking': StockItemTracking.objects.filter(user=user).order_by(
-            '-date'
-        ),
+        'stock_tracking': _stock_history(user),
         'builds_issued': Build.objects.filter(issued_by=user).order_by(
             '-creation_date'
         ),
@@ -67,13 +141,9 @@ def summarize_user_activity(user: User) -> dict:
     return {key: queryset.count() for key, queryset in data.items()}
 
 
-def _serialize_stock_tracking(entry):
-    return {
-        'date': entry.date,
-        'item': str(entry.item),
-        'type': entry.label(),
-        'notes': entry.notes,
-    }
+def _serialize_stock_tracking(row):
+    # Already a plain dict - see _StockHistory
+    return row
 
 
 def _serialize_build(build):
