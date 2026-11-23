@@ -29,7 +29,7 @@ class UserActivityReportPlugin(AppMixin, UrlsMixin, UserInterfaceMixin, InvenTre
         'Generates a comprehensive report of stock, order, part and '
         'attachment activity for a specific user'
     )
-    VERSION = '0.1.0'
+    VERSION = '0.2.0'
     AUTHOR = 'X9X0'
 
     def _can_view(self, request, target_user) -> bool:
